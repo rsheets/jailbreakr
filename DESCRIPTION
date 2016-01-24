@@ -1,7 +1,8 @@
 Package: jailbreakr
 Title: Extract Data From Human-Readable 'Excel' Spreadsheets
 Version: 0.0.1
-Author: Jennifer Bryan <jenny@stat.ubc.ca> and Richard G. FitzJohn <rich.fitzjohn@gmail.com>
+Author: Jennifer Bryan <jenny@stat.ubc.ca> and Richard G. FitzJohn
+    <rich.fitzjohn@gmail.com>
 Maintainer: Jennifer Bryan <jenny@stat.ubc.ca>
 Description: Liberate data from really terrible excel spreadsheets.
     Provides functionality to turn any excel spreadsheet into data
@@ -18,4 +19,4 @@ Imports:
     xml2 (>= 0.1.2.9000)
 Suggests:
     testthat
-RoxygenNote: 5.0.1
+RoxygenNote: 5.0.1.9000
