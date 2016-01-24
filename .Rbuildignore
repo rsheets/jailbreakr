@@ -1,0 +1,8 @@
+^.*\.Rproj$
+^\.Rproj\.user$
+^Makefile$
+^README.Rmd$
+^.travis.yml$
+^appveyor.yml$
+^example.xlsx$
+^jailbreakr_.*\.tar.gz$

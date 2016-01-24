@@ -1,0 +1,21 @@
+Package: jailbreakr
+Title: Extract Data From Human-Readable 'Excel' Spreadsheets
+Version: 0.0.1
+Author: Jennifer Bryan <jenny@stat.ubc.ca> and Richard G. FitzJohn <rich.fitzjohn@gmail.com>
+Maintainer: Jennifer Bryan <jenny@stat.ubc.ca>
+Description: Liberate data from really terrible excel spreadsheets.
+    Provides functionality to turn any excel spreadsheet into data
+    that can be manipulated in R, and tools to detect "logical" tables
+    within such data.  If you have well behaved data you will be
+    better off with something like 'readxl' for quickly reading data
+    in.
+License: GPL-3
+LazyData: true
+URL: https://github.com/jennybc/jailbreakr
+BugReports: https://github.com/jennybc/jailbreakr/issues
+Imports:
+    cellranger,
+    xml2 (>= 0.1.2.9000)
+Suggests:
+    testthat
+RoxygenNote: 5.0.1
