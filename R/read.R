@@ -39,7 +39,39 @@ jailbreak_read <- function(path, sheet=1L) {
   ## correct references for this assertion.
   merged <- xml2::xml_text(
     xml2::xml_find_all(xml, "./d1:mergeCells/d1:mergeCell/@ref", ns))
+  merged <- lapply(merged, cellranger::as.cell_limits)
+
   cells <- xlsx_parse_cells(xml, ns)
+  cells_pos <- A1_to_matrix(cells$ref)
+
+  ## I want to delete all merged cells from the cells list; forget
+  ## about them as they inherit things from the anchor cell.
+  merged_pos <- lapply(merged, loc_merge, TRUE)
+  merged_drop <- do.call("rbind", merged_pos)
+  i <- match_cells(merged_drop, cells_pos)
+  i <- -i[!is.na(i)]
+  for (j in seq_along(cells)) {
+    cells[[j]] <- cells[[j]][i]
+  }
+  pos <- cells_pos[i, , drop=FALSE]
+
+  ## Now, build a look up table for all the cells.
+
+  ## NOTE: pos is not actually enough because it won't take into
+  ## account any merged cells if they flow out from the sides of the
+  ## data, and some *will* do that, given enough sheets.
+  tmp <- rbind(pos, t(vapply(merged, function(el) el$lr, integer(2))))
+  dim <- apply(tmp, 2, max)
+
+  ## Lookup for "true" cells.
+  lookup <- array(NA_integer_, dim)
+  lookup[pos] <- seq_len(nrow(pos))
+  ## A second table with merged cells, distinguished by being
+  ## negative.  abs(lookup2) will give the correct value within the
+  ## cells structure.
+  lookup2 <- lookup
+  i <- match_cells(t(vapply(merged, function(x) x$ul, integer(2))), pos)
+  lookup2[merged_drop] <- -rep(i, vapply(merged_pos, nrow, integer(1)))
 
   ## Dealing with dates is a huge clustercuss; see the files
   ## CellType.h & XlsxWorkBook.h in readxl/src for a considerable
@@ -57,11 +89,8 @@ jailbreak_read <- function(path, sheet=1L) {
   ## String substitutions:
   i <- which(cells$type == "s")
   cells$value[i] <- strings[as.integer(unlist(cells$value[i])) + 1L]
-
   i <- which(lengths(cells$value) > 0L & is.na(cells$type))
   cells$value[i] <- as.numeric(unlist(cells$value[i]))
-
-  cells$pos <- A1_to_matrix(cells$ref)
 
   cells$is_formula <- lengths(cells$formula) > 0L
   cells$is_blank <- lengths(cells$value) == 0L
@@ -70,10 +99,9 @@ jailbreak_read <- function(path, sheet=1L) {
   cells$is_number <- cl == "numeric"
   cells$is_text <- cl == "character"
 
-  merged <- lapply(merged, cellranger::as.cell_limits)
-
-  ret <- list(cells=cells, merged=merged)
-
+  ret <- list(dim=dim, pos=pos, cells=cells,
+              merged=merged,
+              lookup=lookup, lookup2=lookup2)
   class(ret) <- "xlsx"
   ret
 }
@@ -81,51 +109,43 @@ jailbreak_read <- function(path, sheet=1L) {
 ##' @export
 print.xlsx <- function(x, ...) {
   ## First, let's give an overview?
-  cat("<xlsx data>\n")
-
-  ## TODO: This is not actually enough because it won't take into
-  ## account any merged cells if they flow out from the sides of the
-  ## data.  And someone *will* have done that.
-  dim <- apply(x$cells$pos, 2, max)
+  dim <- x$dim
+  cat(sprintf("<xlsx data: %d x %d>\n", dim[[1]], dim[[2]]))
 
   ## Helper for the merged cells.
   print_merge <- function(el) {
+    anc <- "\U2693"
     left <- "\U2190"
     up <- "\U2191"
     ul <- "\U2196"
 
     d <- dim(el)
     anchor <- el$ul
+    loc <- loc_merge(el)
     if (d[[1]] == 1L) {
       str <- rep(left, d[[2L]])
-      rows <- anchor[[1]]
-      cols <- seq.int(anchor[[2]], by=1L, length.out=d[[2L]])
     } else if (d[[2L]] == 1L) {
       str <- rep(up, d[[1L]])
-      rows <- seq.int(anchor[[1]], by=1L, length.out=d[[1L]])
-      cols <- anchor[[2]]
     } else {
       str <- matrix(ul, d[[1]], d[[2]])
-      str[1, ] <- left
-      str[, 1] <- up
-      cols <- seq.int(anchor[[2]], by=1L, length.out=d[[2L]])
-      rows <- seq.int(anchor[[1]], by=1L, length.out=d[[1L]])
+      str[1L, ] <- left
+      str[, 1L] <- up
     }
-    str[[1]] <- "\U2693"
-    list(rows=rows, cols=cols, str=str)
+    str[[1L]] <- anc
+    list(loc=loc, str=str)
   }
 
   m <- matrix(NA, dim[[1]], dim[[2]])
   for (el in x$merged) {
     tmp <- print_merge(el)
-    m[tmp$rows, tmp$cols] <- tmp$str
+    m[tmp$loc] <- tmp$str
   }
 
-  pos <- x$cells$pos
+  pos <- x$pos
   m[pos[x$cells$is_formula & x$cells$is_number, , drop=FALSE]] <- "="
-  m[pos[x$cells$is_formula & x$cells$is_text, , drop=FALSE]] <- "$"
-  m[pos[x$cells$is_value & x$cells$is_number, , drop=FALSE]] <- "0"
-  m[pos[x$cells$is_value & x$cells$is_text, , drop=FALSE]] <- "a"
+  m[pos[x$cells$is_formula & x$cells$is_text,   , drop=FALSE]] <- "$"
+  m[pos[x$cells$is_value   & x$cells$is_number, , drop=FALSE]] <- "0"
+  m[pos[x$cells$is_value   & x$cells$is_text,   , drop=FALSE]] <- "a"
   m[is.na(m)] <- " "
 
   mm <- rbind(rep(LETTERS, length.out=dim[[2]]), m)
@@ -274,4 +294,32 @@ xlsx_parse_string <- function(x, ns) {
   }
   ## TODO: still need to "unescape" these.
   str
+}
+
+loc_merge <- function(el, drop_anchor=FALSE) {
+  d <- dim(el)
+  anchor <- el$ul
+  if (d[[1]] == 1L) {
+    rows <- anchor[[1]]
+    cols <- seq.int(anchor[[2]], by=1L, length.out=d[[2L]])
+  } else if (d[[2L]] == 1L) {
+    rows <- seq.int(anchor[[1]], by=1L, length.out=d[[1L]])
+    cols <- anchor[[2]]
+  } else {
+    cols <- seq.int(anchor[[2]], by=1L, length.out=d[[2L]])
+    rows <- seq.int(anchor[[1]], by=1L, length.out=d[[1L]])
+  }
+  ret <- cbind(row=rows, col=cols)
+  if (drop_anchor) {
+    ret[-1, , drop=FALSE]
+  } else {
+    ret
+  }
+}
+
+match_cells <- function(x, table, ...) {
+  ## assumes 2-column integer matrix
+  x <- paste(x[, 1L], x[, 2L], sep="\r")
+  table <- paste(table[, 1L], table[, 2L], sep="\r")
+  match(x, table, ...)
 }
