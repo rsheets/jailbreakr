@@ -32,6 +32,8 @@ jailbreak_read <- function(path, sheet=1L) {
   xml <- xlsx_read_sheet(path, sheet)
   ns <- xml2::xml_ns(xml)
   strings <- xlsx_read_strings(path)
+  ## NOTE: not currently used; still processing this.
+  style <- xlsx_read_style(path)
 
   ## According to the spec mergeCells contains only mergeCell
   ## elements, and they contain only a "ref" attribute.  Once I track
@@ -100,7 +102,7 @@ jailbreak_read <- function(path, sheet=1L) {
   cells$is_text <- cl == "character"
 
   ret <- list(dim=dim, pos=pos, cells=cells,
-              merged=merged,
+              merged=merged, style=style,
               lookup=lookup, lookup2=lookup2)
   class(ret) <- "xlsx"
   ret
