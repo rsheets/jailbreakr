@@ -31,7 +31,7 @@ jailbreak_read <- function(path, sheet=1L) {
   }
   xml <- xlsx_read_sheet(path, sheet)
   ns <- xml2::xml_ns(xml)
-  strings <- xlsx_read_strings(path)
+  strings <- xlsx_read_shared_strings(path)
   ## NOTE: not currently used; still processing this.
   style <- xlsx_read_style(path)
 
@@ -177,18 +177,19 @@ xlsx_read_file <- function(path, file) {
   xml2::read_xml(filename)
 }
 
-xlsx_read_strings <- function(path) {
+## If the format is <si>/<t> then we can just take the text values.
+## Otherwise we'll have to parse out the RTF strings separately.
+xlsx_read_shared_strings <- function(path) {
   xml <- xlsx_read_file(path, "xl/sharedStrings.xml")
   ns <- xml2::xml_ns(xml)
-  xlsx_parse_strings(xml2::xml_find_all(xml, "d1:si", ns), ns)
-}
-
-xlsx_find_contents <- function(x, ..., text = TRUE) {
-  value <- tryCatch(xml2::xml_find_one(x, ...), error = function(e) NULL)
-  if (text && !is.null(value)) {
-    value <- xml2::xml_text(value)
-  }
-  value
+  si <- xml2::xml_find_all(xml, "d1:si", ns)
+  res <- xml2::xml_find_one(si, "d1:t", ns)
+  ret <- character(length(si))
+  i <- vlapply(res, inherits, "xml_missing")
+  ret[!i] <- xml2::xml_text(res[!i])
+  ## TODO: This codepath is untested:
+  ret[i] <- vcapply(si[i], xlsx_parse_string, ns)
+  ret
 }
 
 ## sheetData: https://msdn.microsoft.com/EN-US/library/office/documentformat.openxml.spreadsheet.sheetdata.aspx
@@ -249,23 +250,12 @@ xlsx_parse_cells <- function(xml, ns) {
   ## Quick check to make sure we didn't miss anything (I think it's
   ## only is values)
   if (any(xml2::xml_find_lgl(cells, "boolean(./d1:is)", ns))) {
+    ## These would get fired through the string parsing I think.
     stop("Inline string value not yet handled")
   }
 
   list(ref=ref, style=style, type=type,
        formula=formula, value=value)
-}
-
-## If the format is <si>/<t> then we can just take the text values.
-## Otherwise we'll have to parse out the RTF strings separately.
-xlsx_parse_strings <- function(x, ns) {
-  ## TODO: This can be fixed now with the new xml2
-  res <- xml2::xml_find_all(x, "./d1:si/d1:t", ns)
-  if (length(res) == length(x)) {
-    as.list(xml2::xml_text(res))
-  } else {
-    lapply(x, xlsx_parse_string, ns)
-  }
 }
 
 ## TODO: If this is the major timesink, then could go ahead and be one
