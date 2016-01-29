@@ -61,19 +61,19 @@ xlsx_read_style_fills <- function(xml, ns) {
   ##   fg: theme, tiny, rgb
   ##   bg: indexed
   f <- function(x, prefix) {
-    ret <- xml2::xml_attrs(x)
-    nms <- sort(unique(unlist(lapply(ret, names))))
-    ret <- t(vapply(ret, function(x) x[nms], character(length(nms))))
-    if (length(nms) == 1L) {
-      ret <- t(ret)
-    }
-    if (length(nms) > 0L) {
-      colnames(ret) <- paste0(prefix, nms)
-    }
-    data.frame(ret, stringsAsFactors=FALSE)
+    ret <- data.frame(attrs_to_matrix(x), stringsAsFactors=FALSE)
+    names(ret) <- paste0(prefix, names(ret))
+    ret
   }
 
-  cbind(type=type, f(fg, "fg_"), f(bg, "bg_"), stringsAsFactors=FALSE)
+  ret <- data.frame(type=type, stringsAsFactors=FALSE)
+  if (!all(vlapply(fg, inherits, "xml_missing"))) {
+    ret <- cbind(ret, f(fg, "fg_"))
+  }
+  if (!all(vlapply(bg, inherits, "xml_missing"))) {
+    ret <- cbind(ret, f(bg, "bg_"))
+  }
+  ret
 }
 
 xlsx_read_style_borders <- function(xml, ns) {
@@ -147,7 +147,12 @@ attrs_to_matrix <- function(x, mode=NULL) {
   dat <- xml2::xml_attrs(x)
   nms <- unique(unlist(lapply(dat, names)))
   ret <- t(vapply(dat, function(x) x[nms], character(length(nms))))
-  colnames(ret) <- nms
+  if (length(nms) == 1L) {
+    ret <- t(ret)
+  }
+  if (length(nms) > 0L) {
+    colnames(ret) <- nms
+  }
   if (!is.null(mode)) {
     storage.mode(ret) <- mode
   }

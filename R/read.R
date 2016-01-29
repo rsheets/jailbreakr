@@ -32,7 +32,6 @@ jailbreak_read <- function(path, sheet=1L) {
   xml <- xlsx_read_sheet(path, sheet)
   ns <- xml2::xml_ns(xml)
   strings <- xlsx_read_shared_strings(path)
-  ## NOTE: not currently used; still processing this.
   style <- xlsx_read_style(path)
 
   ## According to the spec mergeCells contains only mergeCell
@@ -48,32 +47,36 @@ jailbreak_read <- function(path, sheet=1L) {
 
   ## I want to delete all merged cells from the cells list; forget
   ## about them as they inherit things from the anchor cell.
-  merged_pos <- lapply(merged, loc_merge, TRUE)
-  merged_drop <- do.call("rbind", merged_pos)
-  i <- match_cells(merged_drop, cells_pos)
-  i <- -i[!is.na(i)]
-  for (j in seq_along(cells)) {
-    cells[[j]] <- cells[[j]][i]
+  if (length(merged) > 0L) {
+    merged_pos <- lapply(merged, loc_merge, TRUE)
+    merged_drop <- do.call("rbind", merged_pos)
+    i <- match_cells(merged_drop, cells_pos)
+    i <- -i[!is.na(i)]
+    for (j in seq_along(cells)) {
+      cells[[j]] <- cells[[j]][i]
+    }
+    cells_pos <- cells_pos[i, , drop=FALSE]
+    tmp <- rbind(cells_pos, t(vapply(merged, function(el) el$lr, integer(2))))
+    dim <- apply(tmp, 2, max)
+  } else {
+    dim <- apply(cells_pos, 2, max)
   }
-  pos <- cells_pos[i, , drop=FALSE]
 
   ## Now, build a look up table for all the cells.
-
-  ## NOTE: pos is not actually enough because it won't take into
-  ## account any merged cells if they flow out from the sides of the
-  ## data, and some *will* do that, given enough sheets.
-  tmp <- rbind(pos, t(vapply(merged, function(el) el$lr, integer(2))))
-  dim <- apply(tmp, 2, max)
-
   ## Lookup for "true" cells.
   lookup <- array(NA_integer_, dim)
-  lookup[pos] <- seq_len(nrow(pos))
+  lookup[cells_pos] <- seq_len(nrow(cells_pos))
+
   ## A second table with merged cells, distinguished by being
   ## negative.  abs(lookup2) will give the correct value within the
   ## cells structure.
-  lookup2 <- lookup
-  i <- match_cells(t(vapply(merged, function(x) x$ul, integer(2))), pos)
-  lookup2[merged_drop] <- -rep(i, vapply(merged_pos, nrow, integer(1)))
+  if (length(merged) > 0L) {
+    lookup2 <- lookup
+    i <- match_cells(t(vapply(merged, function(x) x$ul, integer(2))), cells_pos)
+    lookup2[merged_drop] <- -rep(i, vapply(merged_pos, nrow, integer(1)))
+  } else {
+    lookup2 <- lookup
+  }
 
   ## Dealing with dates is a huge clustercuss; see the files
   ## CellType.h & XlsxWorkBook.h in readxl/src for a considerable
@@ -101,7 +104,7 @@ jailbreak_read <- function(path, sheet=1L) {
   cells$is_number <- cl == "numeric"
   cells$is_text <- cl == "character"
 
-  ret <- list(dim=dim, pos=pos, cells=cells,
+  ret <- list(dim=dim, pos=cells_pos, cells=cells,
               merged=merged, style=style,
               lookup=lookup, lookup2=lookup2)
   class(ret) <- "xlsx"
