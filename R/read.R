@@ -259,6 +259,7 @@ xlsx_parse_cells <- function(xml, ns) {
 ## If the format is <si>/<t> then we can just take the text values.
 ## Otherwise we'll have to parse out the RTF strings separately.
 xlsx_parse_strings <- function(x, ns) {
+  ## TODO: This can be fixed now with the new xml2
   res <- xml2::xml_find_all(x, "./d1:si/d1:t", ns)
   if (length(res) == length(x)) {
     as.list(xml2::xml_text(res))

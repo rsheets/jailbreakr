@@ -6,8 +6,17 @@ xlsx_read_style <- function(path) {
   fills <- xlsx_read_style_fills(xml, ns)
   borders <- xlsx_read_style_borders(xml, ns)
 
-  list(fonts=fonts, fills=fills, borders=borders)
+  ## XFS is "cell formatting".  The s="<int>" tag refers to an entry
+  ## in cellXfs, so this is _probably_ the most useful.
+  cell_style_xfs <- xlsx_read_cell_style_xfs(xml, ns)
+  cell_xfs <- xlsx_read_cell_xfs(xml, ns)
+  cell_styles <- xlsx_read_cell_styles(xml, ns)
+  num_formats <- xlsx_read_num_formats(xml, ns)
+
+  list(fonts=fonts, fills=fills, borders=borders,
+       cell_style_xfs, cell_xfs, cell_styles, num_formats=num_formats)
 }
+
 xlsx_read_style_fonts <- function(xml, ns) {
   fonts <- xml2::xml_find_one(xml, "d1:fonts", ns)
   fonts_f <- xml2::xml_children(fonts)
@@ -90,4 +99,57 @@ xlsx_read_style_borders <- function(xml, ns) {
     right=xml2::xml_find_lgl(borders_f, "boolean(d1:right/@style)", ns),
     diagonal=xml2::xml_find_lgl(borders_f, "boolean(d1:diagonal/@style)", ns),
     stringsAsFactors=FALSE)
+}
+
+xlsx_read_cell_style_xfs <- function(xml, ns) {
+  csx <- xml2::xml_find_one(xml, "d1:cellStyleXfs", ns)
+  as.data.frame(attrs_to_matrix(xml2::xml_children(csx), "integer"))
+}
+
+xlsx_read_cell_xfs <- function(xml, ns) {
+  cx <- xml2::xml_find_one(xml, "d1:cellXfs", ns)
+  cx_kids <- xml2::xml_children(cx)
+  ret <- as.data.frame(attrs_to_matrix(cx_kids, "integer"))
+  ret_align <- attrs_to_matrix(xml2::xml_find_one(cx_kids, "d1:alignment", ns))
+  ret_align <- data.frame(ret_align, stringsAsFactors=FALSE)
+  if ("wrapText" %in% names(ret_align)) {
+    ret_align$wrapText <- as.logical(ret_align$wrapText)
+  }
+  cbind(ret, ret_align)
+}
+
+xlsx_read_cell_styles <- function(xml, ns) {
+  cs <- xml2::xml_find_one(xml, "d1:cellStyles", ns)
+  ret <- data.frame(attrs_to_matrix(xml2::xml_children(cs)),
+                    stringsAsFactors=FALSE)
+  if ("xfId" %in% names(ret)) {
+    ret$xfId <- as.integer(ret$xfId)
+  }
+  if ("builtinId" %in% names(ret)) {
+    ret$builtinId <- as.integer(ret$builtinId)
+  }
+  if ("hidden" %in% names(ret)) {
+    ret$hidden <- as.logical(ret$hidden)
+  }
+  ret
+}
+
+xlsx_read_num_formats <- function(xml, ns) {
+  dat <- xml2::xml_find_one(xml, "d1:numFmts", ns)
+  ret <- as.data.frame(attrs_to_matrix(xml2::xml_children(dat)))
+  if ("numFmtId" %in% names(ret)) {
+    ret$numFmtId <- as.integer(ret$numFmtId)
+  }
+  ret
+}
+
+attrs_to_matrix <- function(x, mode=NULL) {
+  dat <- xml2::xml_attrs(x)
+  nms <- unique(unlist(lapply(dat, names)))
+  ret <- t(vapply(dat, function(x) x[nms], character(length(nms))))
+  colnames(ret) <- nms
+  if (!is.null(mode)) {
+    storage.mode(ret) <- mode
+  }
+  ret
 }
