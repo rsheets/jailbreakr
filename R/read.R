@@ -165,7 +165,7 @@ print.xlsx <- function(x, ...) {
 ## xlsx_parse_*: turns xml into somethig usable
 
 xlsx_read_sheet <- function(path, sheet) {
-  xml <- xlsx_read_file(path, sprintf("xl/worksheets/sheet%d.xml", sheet))
+  xml <- xlsx_read_file(path, internal_sheet_name(path, sheet))
   stopifnot(xml2::xml_name(xml) == "worksheet")
   xml
 }
@@ -178,6 +178,23 @@ xlsx_read_file <- function(path, file) {
                        warning=function(e) stop(e))
   on.exit(unlink(tmp, recursive=TRUE))
   xml2::read_xml(filename)
+}
+
+xlsx_read_file_if_exists <- function(path, file, missing=NULL) {
+  ## TODO: Appropriate error handling here is difficult; we should
+  ## check that `path` exists, but by the time that this is called we
+  ## know that already.
+  tmp <- tempfile()
+  dir.create(tmp)
+  filename <- tryCatch(utils::unzip(path, file, exdir=tmp),
+                       warning=function(e) NULL,
+                       error=function(e) NULL)
+  if (is.null(filename)) {
+    missing
+  } else {
+    on.exit(unlink(tmp, recursive=TRUE))
+    xml2::read_xml(filename)
+  }
 }
 
 ## If the format is <si>/<t> then we can just take the text values.
@@ -318,4 +335,48 @@ match_cells <- function(x, table, ...) {
   x <- paste(x[, 1L], x[, 2L], sep="\r")
   table <- paste(table[, 1L], table[, 2L], sep="\r")
   match(x, table, ...)
+}
+
+sheet_names <- function(filename) {
+  xml <- xlsx_read_file(filename, "xl/workbook.xml")
+  ns <- xml2::xml_ns(xml)
+  xml2::xml_text(xml2::xml_find_all(xml, "d1:sheets/d1:sheet/@name", ns))
+}
+
+## Return the filename within the bundle
+internal_sheet_name <- function(filename, sheet) {
+  if (length(sheet) != 1L) {
+    stop("'sheet' must be a scalar")
+  }
+  if (is.na(sheet)) {
+    stop("'sheet' must be non-missing")
+  }
+  if (is.character(sheet)) {
+    sheet <- match(sheet, sheet_names(filename))
+  } else if (!(is.integer(sheet) || is.numeric(sheet))) {
+    stop("'sheet' must be an integer or a string")
+  }
+
+  ## TODO: Looks like this does always exist.
+  rels <- xlsx_read_file_if_exists(filename, "xl/_rels/workbook.xml.rels")
+  if (is.null(rels)) {
+    target <- sprintf("xl/worksheets/sheet%d.xml", sheet)
+  } else {
+    ## This might fail with a cryptic error if my assumptions are
+    ## incorrect.
+    xml <- xlsx_read_file(filename, "xl/workbook.xml")
+    xpath <- sprintf("d1:sheets/d1:sheet[%d]", sheet)
+    node <- xml2::xml_find_one(xml, xpath, xml2::xml_ns(xml))
+    id <- xml2::xml_attr(node, "id")
+    ## This _should_ work but I don't see it:
+    ##   xpath <- sprintf("string(d1:sheets/d1:sheet[%d]/@id)", sheet)
+    ##   xml2::xml_find_chr(xml, xpath, ns) # --> ""
+    xpath <- sprintf('/d1:Relationships/d1:Relationship[@Id = "%s"]/@Target',
+                     id)
+    target <- xml2::xml_text(xml2::xml_find_one(rels, xpath,
+                                                xml2::xml_ns(rels)))
+    ## NOTE: these are _relative_ paths so must be qualified here:
+    target <- file.path("xl", target)
+  }
+  target
 }
