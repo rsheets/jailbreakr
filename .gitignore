@@ -2,3 +2,4 @@
 .Rhistory
 .RData
 example.xlsx
+tests/testthat/readxl

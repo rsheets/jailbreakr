@@ -18,5 +18,6 @@ Imports:
     cellranger,
     xml2 (>= 0.1.2.9000)
 Suggests:
+    readxl,
     testthat
 RoxygenNote: 5.0.1.9000

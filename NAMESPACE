@@ -2,3 +2,4 @@
 
 S3method(print,xlsx)
 export(jailbreak_read)
+export(jailbreak_readxl)

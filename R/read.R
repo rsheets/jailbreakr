@@ -200,15 +200,21 @@ xlsx_read_file_if_exists <- function(path, file, missing=NULL) {
 ## If the format is <si>/<t> then we can just take the text values.
 ## Otherwise we'll have to parse out the RTF strings separately.
 xlsx_read_shared_strings <- function(path) {
-  xml <- xlsx_read_file(path, "xl/sharedStrings.xml")
+  xml <- xlsx_read_file_if_exists(path, "xl/sharedStrings.xml")
+  if (is.null(xml)) {
+    return(character(0))
+  }
   ns <- xml2::xml_ns(xml)
   si <- xml2::xml_find_all(xml, "d1:si", ns)
-  res <- xml2::xml_find_one(si, "d1:t", ns)
+  if (length(si) == 0L) {
+    return(character(0))
+  }
+  ## TODO: This is a bug in xls
+  is_rich <- xml2::xml_find_lgl(si, "boolean(d1:r)", ns)
   ret <- character(length(si))
-  i <- vlapply(res, inherits, "xml_missing")
-  ret[!i] <- xml2::xml_text(res[!i])
-  ## TODO: This codepath is untested:
-  ret[i] <- vcapply(si[i], xlsx_parse_string, ns)
+  ret[!is_rich] <-
+    xml2::xml_text(xml2::xml_find_one(si[!is_rich], "d1:t", ns))
+  ret[is_rich] <- vcapply(si[is_rich], xlsx_parse_string, ns)
   ret
 }
 
@@ -269,7 +275,8 @@ xlsx_parse_cells <- function(xml, ns) {
 
   ## Quick check to make sure we didn't miss anything (I think it's
   ## only is values)
-  if (any(xml2::xml_find_lgl(cells, "boolean(./d1:is)", ns))) {
+  inline_string <- xml2::xml_find_lgl(cells, "boolean(./d1:is)", ns)
+  if (any(inline_string)) {
     ## These would get fired through the string parsing I think.
     stop("Inline string value not yet handled")
   }
@@ -278,32 +285,18 @@ xlsx_parse_cells <- function(xml, ns) {
        formula=formula, value=value)
 }
 
-## TODO: If this is the major timesink, then could go ahead and be one
-## xpath by looking for si/t?
-##
-## This could be sped up by a factor of 10 if we take vectorised input.
 xlsx_parse_string <- function(x, ns) {
-  t <- tryCatch(xml2::xml_find_one(x, "d1:t", ns), error=function(e) NULL)
-  if (is.null(t)) {
+  t <- xml2::xml_find_one(x, "d1:t", ns)
+  if (inherits(t, "xml_missing")) {
+    ## NOTE: it *looks* like most of the time we can do xml_text(x)
+    ## here and get about the right answer.
     str <- character()
   } else {
-    str <- xml2::xml_text(x)
+    str <- xml2::xml_text(t)
   }
-
   r <- xml2::xml_find_all(x, "d1:r", ns)
-  nr <- length(r)
-  if (nr > 0L) {
-    str2 <- character(nr)
-    found <- logical(nr)
-    for (i in seq_len(nr)) {
-      t <- tryCatch(xml2::xml_find_one(r[[i]], "d1:t", ns),
-                    error=function(e) NULL)
-      found[[i]] <- !is.null(t)
-      if (found[[i]]) {
-        str2[[i]] <- as.character(xml2::xml_contents(t))
-      }
-    }
-    str <- c(str, str2[found])
+  if (length(r) > 0L) {
+    str <- paste(c(str, xml2::xml_text(r)), collapse="")
   }
   ## TODO: still need to "unescape" these.
   str
