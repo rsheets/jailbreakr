@@ -57,6 +57,11 @@ jailbreak_readxl <- function(path, sheet=1L, col_names=TRUE,
   i <- na.omit(c(lookup))
   j <- !is.na(c(lookup))
   type[j][dat$cells$is_number[i]] <- cell_types[["number"]]
+  ## NOTE: bool is going to map to map to number here to match the
+  ## behaviour of readxl; I'd rather map it to logical, but I'm sure
+  ## Hadley had a very good reason for not doing this, which I'd
+  ## rather not find out the hard way.
+  type[j][dat$cells$is_bool[i]] <- cell_types[["number"]]
   type[j][dat$cells$is_text[i]] <- cell_types[["text"]]
   type <- apply(type, 2, max)
   type <- names(cell_types)[match(type, cell_types)]

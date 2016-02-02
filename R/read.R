@@ -101,8 +101,9 @@ jailbreak_read <- function(path, sheet=1L) {
   cells$is_blank <- lengths(cells$value) == 0L
   cells$is_value <- !cells$is_blank & !cells$is_formula
   cl <- vcapply(cells$value, class)
+  cells$is_bool <- !is.na(cells$type) & cells$type == "b"
   cells$is_number <- cl == "numeric"
-  cells$is_text <- cl == "character"
+  cells$is_text <- cl == "character" & !cells$is_bool
 
   ret <- list(dim=dim, pos=cells_pos, cells=cells,
               merged=merged, style=style,
@@ -149,8 +150,10 @@ print.xlsx <- function(x, ...) {
   pos <- x$pos
   m[pos[x$cells$is_formula & x$cells$is_number, , drop=FALSE]] <- "="
   m[pos[x$cells$is_formula & x$cells$is_text,   , drop=FALSE]] <- "$"
+  m[pos[x$cells$is_formula & x$cells$is_bool,   , drop=FALSE]] <- "!"
   m[pos[x$cells$is_value   & x$cells$is_number, , drop=FALSE]] <- "0"
   m[pos[x$cells$is_value   & x$cells$is_text,   , drop=FALSE]] <- "a"
+  m[pos[x$cells$is_value   & x$cells$is_bool,   , drop=FALSE]] <- "@"
   m[is.na(m)] <- " "
 
   mm <- rbind(rep(LETTERS, length.out=dim[[2]]), m)
