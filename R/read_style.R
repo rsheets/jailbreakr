@@ -14,7 +14,10 @@ xlsx_read_style <- function(path) {
   num_formats <- xlsx_read_num_formats(xml, ns)
 
   list(fonts=fonts, fills=fills, borders=borders,
-       cell_style_xfs, cell_xfs, cell_styles, num_formats=num_formats)
+       cell_style_xfs=cell_style_xfs,
+       cell_xfs=cell_xfs,
+       cell_styles=cell_styles,
+       num_formats=num_formats)
 }
 
 xlsx_read_style_fonts <- function(xml, ns) {

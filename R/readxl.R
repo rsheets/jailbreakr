@@ -16,7 +16,7 @@
 jailbreak_readxl <- function(path, sheet=1L, col_names=TRUE,
                              col_types=NULL, na="", skip=0) {
   if (!identical(na, "")) {
-    .NotYetUsed("na") # TODO
+    .NotYetUsed("na") # TODO -- passed in to the type inference stuff
   }
   dat <- jailbreak_read(path, sheet)
   nc <- dat$dim[[2]]
@@ -50,33 +50,35 @@ jailbreak_readxl <- function(path, sheet=1L, col_names=TRUE,
     ##           "date" or "text".
   }
 
-  ## Valid types: blank > date > numeric > text
-  ## TODO: I can't do date yet.
-  cell_types <- c(blank=0, date=1, number=2, text=3)
-  type <- array(cell_types[["blank"]], dim(lookup))
-  i <- na.omit(c(lookup))
-  j <- !is.na(c(lookup))
-  type[j][dat$cells$is_number[i]] <- cell_types[["number"]]
+  ## Valid types: blank > bool > date > numeric > text
   ## NOTE: bool is going to map to map to number here to match the
   ## behaviour of readxl; I'd rather map it to logical, but I'm sure
   ## Hadley had a very good reason for not doing this, which I'd
-  ## rather not find out the hard way.
-  type[j][dat$cells$is_bool[i]] <- cell_types[["number"]]
-  type[j][dat$cells$is_text[i]] <- cell_types[["text"]]
-  type <- apply(type, 2, max)
+  ## rather not find out the hard way.  At the same time I saw a
+  ## comment in the source with a TODO on it --
+  ##   src/XlsxCell.h: XlsxCell::type()
+  ## TODO: columns that mix bool and number should throw an error at
+  ## the moment because those types can't be harmonised, really.
+  cell_types <- c(blank=0, bool=1, date=2, number=3, text=4)
+  type <- array(unname(cell_types[dat$cells$type[c(lookup)]]), dim(lookup))
+  type <- apply(rbind(cell_types[["blank"]], type), 2, max, na.rm=TRUE)
   type <- names(cell_types)[match(type, cell_types)]
 
   ret <- data.frame(array(NA, dim(lookup)))
 
-  ## TODO: What becomes of boolean data from excel?
   tr <- list(number=as.numeric,
-             date=function(...) stop("not implemented"),
+             bool=as.numeric,
+             date=unlist_times,
              text=as.character,
              blank=as.numeric)
   for (i in seq_along(type)) {
     t <- type[[i]]
     j <- lookup[, i]
     k <- !is.na(j)
+    if (t == "date") {
+      ## FFS. http://i.giphy.com/arz9UYo8bCo4E.gif
+      ret[[i]] <- as.POSIXct(ret[[i]])
+    }
     ret[k, i] <- tr[[t]](dat$cells$value[j[k]])
   }
 
@@ -92,4 +94,16 @@ jailbreak_readxl <- function(path, sheet=1L, col_names=TRUE,
 
   class(ret) <- c("tbl_df", "tbl", "data.frame")
   ret
+}
+
+## The R time objects really want me poke my eyes out.  Perhaps there
+## is a better way of doing this?  Who knows?
+unlist_times <- function(x) {
+  if (length(x) == 0L) {
+    structure(numeric(0), class=c("POSIXct", "POSIXt"), tzone="UTC")
+  } else {
+    tmp <- unlist(x)
+    attributes(tmp) <- attributes(x[[1L]])
+    tmp
+  }
 }

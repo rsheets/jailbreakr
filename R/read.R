@@ -82,28 +82,50 @@ jailbreak_read <- function(path, sheet=1L) {
   ## CellType.h & XlsxWorkBook.h in readxl/src for a considerable
   ## amount of faffing to get dates working.  However, for my
   ## immediate needs we can juust skip over it.
-  ##
-  ## It's likely that formatting will give good hints about where
-  ## logical regions in spreadsheets are.  In that case, see here:
-  ## http://blogs.msdn.com/b/brian_jones/archive/2007/05/29/simple-spreadsheetml-file-part-3-formatting.aspx
-  ## coloured blocks (fill style) and gridlines are probably going to
-  ## be the trick.  Gridlines are going to be nasty though because of
-  ## corners and that spreadsheets, as they age, get corners all over
-  ## the show where they should not be.  So another thing for later.
+
+  ## TODO: Roll this back into the xfs parsing perhaps?
+  if ("formatCode" %in% names(style$num_formats)) {
+    custom_date <- style$num_formats$numFmtId[
+      grepl("[dmyhs]", style$num_formats$formatCode)]
+  } else {
+    custom_date <- integer()
+  }
+  ## Might roll this back into the style?
+  is_date_time <- is_date_time(style$cell_xfs$numFmtId, custom_date)
+
+  ## See readxl/src/XlsxCell.h: XlsxCell::type()
 
   ## String substitutions:
   i <- which(cells$type == "s")
   cells$value[i] <- strings[as.integer(unlist(cells$value[i])) + 1L]
-  i <- which(lengths(cells$value) > 0L & is.na(cells$type))
+
+  ## TODO: There are some blanks in here I need to get; formulae that
+  ## yield zerolength strings, text cells that have no length.
+  cells$is_formula <- lengths(cells$formula) > 0L
+  cells$is_value <- lengths(cells$value) > 0L& !cells$is_formula
+
+  type <- character(length(cells$value))
+  type[!is.na(cells$type) & cells$type == "b"] <- "bool"
+  type[!is.na(cells$type) & cells$type == "s" | cells$type == "str"] <- "text"
+  i <- is.na(cells$type) | cells$type == "n"
+  j <- is_date_time[cells$style[i] + 1L]
+  type[i] <- ifelse(!is.na(j) & j, "date", "number")
+  type[lengths(cells$value) == 0L] <- "blank"
+
+  cells$type <- type
+  cells$is_blank <- type == "blank"
+  cells$is_bool <- type == "bool"
+  cells$is_number <- cells$is_bool | type == "number"
+  cells$is_date <- type == "date"
+  cells$is_text <- type == "text"
+
+  i <- cells$is_number
   cells$value[i] <- as.numeric(unlist(cells$value[i]))
 
-  cells$is_formula <- lengths(cells$formula) > 0L
-  cells$is_blank <- lengths(cells$value) == 0L
-  cells$is_value <- !cells$is_blank & !cells$is_formula
-  cl <- vcapply(cells$value, class)
-  cells$is_bool <- !is.na(cells$type) & cells$type == "b"
-  cells$is_number <- cl == "numeric"
-  cells$is_text <- cl == "character" & !cells$is_bool
+  i <- cells$is_date
+  cells$value[i] <-
+    as.list(as.POSIXct(as.numeric(unlist(cells$value[i])) * 86400,
+                       "UTC", xlsx_date_offset(path)))
 
   ret <- list(dim=dim, pos=cells_pos, cells=cells,
               merged=merged, style=style,
@@ -151,9 +173,11 @@ print.xlsx <- function(x, ...) {
   m[pos[x$cells$is_formula & x$cells$is_number, , drop=FALSE]] <- "="
   m[pos[x$cells$is_formula & x$cells$is_text,   , drop=FALSE]] <- "$"
   m[pos[x$cells$is_formula & x$cells$is_bool,   , drop=FALSE]] <- "!"
+  m[pos[x$cells$is_formula & x$cells$is_date,   , drop=FALSE]] <- "#"
   m[pos[x$cells$is_value   & x$cells$is_number, , drop=FALSE]] <- "0"
   m[pos[x$cells$is_value   & x$cells$is_text,   , drop=FALSE]] <- "a"
-  m[pos[x$cells$is_value   & x$cells$is_bool,   , drop=FALSE]] <- "@"
+  m[pos[x$cells$is_value   & x$cells$is_bool,   , drop=FALSE]] <- "b"
+  m[pos[x$cells$is_formula & x$cells$is_date,   , drop=FALSE]] <- "d"
   m[is.na(m)] <- " "
 
   mm <- rbind(rep(LETTERS, length.out=dim[[2]]), m)
@@ -270,7 +294,7 @@ xlsx_parse_cells <- function(xml, ns) {
   }
 
   ref <- xml2::xml_attr(cells, "r")
-  style <- xml2::xml_attr(cells, "s")
+  style <- as.integer(xml2::xml_attr(cells, "s"))
   type <- xml2::xml_attr(cells, "t")
 
   formula <- xml_find_if_exists(cells, "./d1:f", ns)
@@ -375,4 +399,19 @@ internal_sheet_name <- function(filename, sheet) {
     target <- file.path("xl", target)
   }
   target
+}
+
+xlsx_date_offset <- function(path) {
+  ## See readxl/src/utils.h: dateOffset
+  xml <- xlsx_read_file(path, "xl/workbook.xml")
+  date1904 <- xml2::xml_find_one(xml, "/d1:workbook/d1:workbookPr/@date1904",
+                                 xml2::xml_ns(xml))
+  date_is_1904 <- !inherits(date1904, "xml_missing") &&
+    as.integer(xml2::xml_text(date1904)) == 1L
+  if (date_is_1904) "1904-01-01" else "1899-12-30"
+}
+
+is_date_time <- function(id, custom) {
+  ## See readxl's src/CellType.h: isDateTime()
+  id %in% c(c(14:22, 27:36, 45:47, 50:58, 71:81), custom)
 }
