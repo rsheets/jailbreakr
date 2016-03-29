@@ -26,7 +26,9 @@ jailbreak_readxl <- function(path, sheet=1L, col_names=TRUE,
       col_names <- rep(NA_character_, nc)
       i <- dat$lookup[skip + 1L, ]
       keep <- !is.na(i)
-      col_names[keep] <- unlist(dat$cells$value[i[keep]])
+      nms <- dat$cells$value[i[keep]]
+      j <- !vlapply(nms, is.null)
+      col_names[keep][j] <- unlist(nms[j])
       skip <- skip + 1L
     } else {
       col_names <- NULL
