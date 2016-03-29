@@ -456,11 +456,19 @@ internal_sheet_name <- function(filename, sheet) {
 
 xlsx_date_offset <- function(path) {
   ## See readxl/src/utils.h: dateOffset
+  ## See readxl/src/XlsxWorkbook.h: is1904
   xml <- xlsx_read_file(path, "xl/workbook.xml")
   date1904 <- xml2::xml_find_one(xml, "/d1:workbook/d1:workbookPr/@date1904",
                                  xml2::xml_ns(xml))
-  date_is_1904 <- !inherits(date1904, "xml_missing") &&
-    as.integer(xml2::xml_text(date1904)) == 1L
+  if (inherits(date1904, "xml_missing")) {
+    date_is_1904 <- FALSE
+  } else {
+    ## TODO: in theory we should do whatever atoi would allow here
+    ## (that's what Hadley uses in the C++) but I have a sheet that
+    ## contains this as "false".  So I'm trying this way for now.
+    value <- xml2::xml_text(date1904)
+    date_is_1904 <- value == "1" || value == "true"
+  }
   if (date_is_1904) "1904-01-01" else "1899-12-30"
 }
 
