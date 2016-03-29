@@ -69,7 +69,7 @@ jailbreak_readxl <- function(path, sheet=1L, col_names=TRUE,
   tr <- list(number=as.numeric,
              bool=as.numeric,
              date=unlist_times,
-             text=as.character,
+             text=function(x) vapply(x, as.character, character(1L)),
              blank=as.numeric)
   for (i in seq_along(type)) {
     t <- type[[i]]
@@ -79,7 +79,9 @@ jailbreak_readxl <- function(path, sheet=1L, col_names=TRUE,
       ## FFS. http://i.giphy.com/arz9UYo8bCo4E.gif
       ret[[i]] <- as.POSIXct(ret[[i]])
     }
-    ret[k, i] <- tr[[t]](dat$cells$value[j[k]])
+    col <- dat$cells$value[j[k]]
+    col[vlapply(col, is.null)] <- list(NA)
+    ret[k, i] <- tr[[t]](col)
   }
 
   keep <- keep | type != "blank"
