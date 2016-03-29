@@ -159,6 +159,10 @@ attrs_to_matrix <- function(x, mode=NULL) {
     colnames(ret) <- nms
   }
   if (!is.null(mode)) {
+    if (mode == "integer" || mode == "logical") {
+      ret[ret == "false"] <- "0"
+      ret[ret == "true"] <- "1"
+    }
     storage.mode(ret) <- mode
   }
   ret
