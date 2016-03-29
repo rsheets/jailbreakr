@@ -26,7 +26,9 @@ xlsx_read_style_fonts <- function(xml, ns) {
 
   pos <- sort(unique(unlist(lapply(fonts_f, function(el)
     xml2::xml_name(kids <- xml2::xml_children(el))))))
-  known <- c("sz", "color", "scheme", "family", "b", "i", "u", "name")
+  known <- c("sz", "color", "scheme", "family", "b", "i", "u", "name",
+             ## These we ignore:
+             "charset")
   unk <- setdiff(pos, known)
   if (length(unk) > 0L) {
     message("Skipping unhandled font tags: ", paste(unk, collapse=", "))
