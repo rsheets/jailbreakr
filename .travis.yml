@@ -1,5 +1,5 @@
 language: r
-sudo: required
+cache: packages
 
 r_github_packages:
   - hadley/xml2
