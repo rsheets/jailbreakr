@@ -3,3 +3,6 @@
 .RData
 example.xlsx
 tests/testthat/readxl
+.httr-oauth
+internal-projects/old-snails
+internal-projects/ferrell
