@@ -1,0 +1,24 @@
+jailbreakr: Get out of Excel, free
+
+One out of every ten people on the planet uses a spreadsheet and about
+half of those use formulas: "Let's not kid ourselves: the most widely
+used piece of software for statistics is Excel." (Ripley, 2002) Those of
+us who script analyses are in the distinct minority!
+
+There are several effective packages for importing spreadsheet data into
+R. But, broadly speaking, they prioritize access to [a] data and [b]
+data that lives in a neat rectangle. In our collaborative analytical
+work, we battle spreadsheets created by people who did not get this
+memo. We see messy sheets, with multiple data regions sprinkled around,
+mixed with computed results and figures. Data regions can be a blend of
+actual data and, e.g., derived columns that are computed from other
+columns.
+
+We will present our work on extracting tricky data and formula logic out
+of spreadsheets. To what extent can data tables be automatically
+identified and extracted? Can we identify columns that are derived from
+others in a wholesale fashion and translate that into something useful
+on the R side? The goal is to create a more porous border between R and
+spreadsheets. Target audiences include novices transitioning from
+spreadsheets to R and experienced useRs who are dealing with challenging
+sheets.
