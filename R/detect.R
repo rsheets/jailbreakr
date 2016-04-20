@@ -1,5 +1,3 @@
-## Attempt to classify sub-tables from a worksheet.
-
 ## This is surprisingly hard to do in the general case because we
 ## need to find all islands that satisfy the general property; they
 ## might not be aligned so we can't use the general approach of
@@ -11,11 +9,37 @@
 ## an edge of the table, or by a set of blank cells.  I believe that
 ## the "flood fill" algorithm here is a reasonable choice and using a
 ## 4-direction queue will be fairly efficient.
-classify_tables <- function(dat, as="limits") {
+
+##' Classify a table into sub-regions.  We're looking for a (possibly
+##' ragged) block of cells surrounded by a set of blank cells or the
+##' edge of the sheet.  This does not detect regions that are multiple
+##' square regions offset from each other, but that could possibly be
+##' done afterwards.
+##'
+##' This function works by applying the "flood fill" algorithm to
+##' non-blank cells in the worksheet and then squaring off the result.
+##'
+##' The \code{classify_sheet} function does the actual classification,
+##' and \code{split_sheet} applies \code{worksheet_view} to these to
+##' produce something that can be used (approximately) as if it was a
+##' separate sheet.
+##' @title Classify and split sheet
+##' @param sheet A linen \code{worksheet} object, possibly from an
+##'   Excel or googlesheets spreadsheet.
+##' @param as Character, indicating what to return - \code{"limits"}:
+##'   a list of limits (the default), \code{"groups"} a matrix of the
+##'   same dimensions as the worksheet indicating what group each cell
+##'   is in, or \code{"both"}: a list with elements \code{"limits"}
+##'   and \code{"groups"}.
+##' @export
+classify_sheet <- function(sheet, as="limits") {
+  if (!inherits(sheet, "worksheet")) {
+    stop("sheet must be a 'worksheet' object")
+  }
   as <- match.arg(as, c("limits", "groups", "both"))
 
-  i <- abs(dat$lookup2)
-  i <- !is.na(i) & !dat$cells$is_blank[c(i)]
+  i <- abs(sheet$lookup2)
+  i <- !is.na(i) & !sheet$cells$is_blank[c(i)]
   ## writeLines(apply(ifelse(i, "*", " "), 1, paste, collapse=""))
 
   ## Pad the array with FALSE to avoid a lot of conditional switches.
@@ -89,10 +113,12 @@ classify_tables <- function(dat, as="limits") {
          both=list(groups=grp, limits=limits))
 }
 
-split_tables <- function(dat) {
-  if (!is.list(dat)) {
-    stop("dat must be a list of cell_limits objects")
+##' @export
+##' @rdname classify_sheet
+split_sheet <- function(sheet) {
+  if (!inherits(sheet, "worksheet")) {
+    stop("sheet must be a 'worksheet' object")
   }
-  limits <- classify_tables(dat, "limits")
-  lapply(limits, jailbreak_subset, dat=dat)
+  limits <- classify_sheet(sheet, "limits")
+  lapply(limits, worksheet_view, sheet=sheet)
 }
