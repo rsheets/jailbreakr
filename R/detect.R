@@ -40,7 +40,23 @@ classify_sheet <- function(sheet, as="limits") {
 
   i <- abs(sheet$lookup2)
   i <- !is.na(i) & !sheet$cells$is_blank[c(i)]
-  ## writeLines(apply(ifelse(i, "*", " "), 1, paste, collapse=""))
+  classify(i, as)
+}
+
+##' @export
+##' @rdname classify_sheet
+split_sheet <- function(sheet) {
+  if (!inherits(sheet, "worksheet")) {
+    stop("sheet must be a 'worksheet' object")
+  }
+  limits <- classify_sheet(sheet, "limits")
+  lapply(limits, worksheet_view, sheet=sheet)
+}
+
+classify <- function(i, as) {
+  ## TODO: Refactor to allow multiple regions not just TRUE/FALSE
+  ##
+  ## TODO: add squaring off as an option...
 
   ## Pad the array with FALSE to avoid a lot of conditional switches.
   nc <- ncol(i)
@@ -111,14 +127,4 @@ classify_sheet <- function(sheet, as="limits") {
          groups=grp,
          limits=limits,
          both=list(groups=grp, limits=limits))
-}
-
-##' @export
-##' @rdname classify_sheet
-split_sheet <- function(sheet) {
-  if (!inherits(sheet, "worksheet")) {
-    stop("sheet must be a 'worksheet' object")
-  }
-  limits <- classify_sheet(sheet, "limits")
-  lapply(limits, worksheet_view, sheet=sheet)
 }
