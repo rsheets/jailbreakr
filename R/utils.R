@@ -10,3 +10,7 @@ vnapply <- function(X, FUN, ...) {
 vcapply <- function(X, FUN, ...) {
   vapply(X, FUN, character(1), ...)
 }
+
+`%||%` <- function(a, b) {
+  if (is.null(a)) b else a
+}

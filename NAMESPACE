@@ -2,3 +2,4 @@
 
 export(classify_sheet)
 export(split_sheet)
+export(unmerge_header)
