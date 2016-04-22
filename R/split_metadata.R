@@ -65,16 +65,8 @@ split_metadata <- function(x, include_merged=TRUE, min_jump=2,
 ##' @rdname split_metadata
 split_metadata_find <- function(x, include_merged=TRUE, min_jump=2,
                                 min_data_block=5) {
-  ## This is general thing here, I think.
-  if (inherits(x, "worksheet_view")) {
-    lookup <- x$sheet$lookup2[x$idx$r, x$idx$c]
-    sheet <- x$sheet
-  } else {
-    lookup <- x$lookup2
-    sheet <- x
-  }
-
-  lookup[sheet$cells$type[abs(lookup)] == "blank"] <- NA
+  lookup <- x$lookup2
+  lookup[x$cells$type[abs(lookup)] == "blank"] <- NA
   if (!include_merged) {
     lookup[lookup < 0] <- NA
   }
@@ -88,20 +80,18 @@ split_metadata_find <- function(x, include_merged=TRUE, min_jump=2,
 ##'   consider to be metadata (i.e., equivalent to the return value of
 ##'   \code{split_metadata_find}.
 split_metadata_apply <- function(x, n) {
-  if (inherits(x, "worksheet_view")) {
-    xr <- x$xr
-    data <- xr$data
-  } else {
-    xr <- cellranger::cell_limits(c(1, 1), sheet$dim)
-    data <- list()
-  }
-  xr_meta <- xr
-  xr$ul[[1]] <- xr$ul[[1]] + n
+  ## TODO: This needs changing if we have filters in place; the
+  ## filters will copy over.  So if we let NULL filters be OK then
+  ## that will work well with sheets not having a slot for this.
+  xr_meta <- xr <- x$xr
 
+  xr$ul[[1]] <- xr$ul[[1]] + n
   xr_meta$lr[[1]] <- xr_meta$ul[[1]] + n - 1L
+
+  data <- as.list(x$data)
   data$metadata <- linen::worksheet_view(sheet, xr_meta)
 
-  linen::worksheet_view(sheet, xr, data)
+  linen::worksheet_view(sheet, xr, data=data)
 }
 
 ## Now, we look for the first increase of size min_jump where there is
