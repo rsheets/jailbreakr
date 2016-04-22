@@ -58,7 +58,7 @@
 ##'   to have to process these names a bit later.
 ##' @return A character vector
 ##' @export
-unmerge_header <- function(sheet, xr, horizontal=TRUE, sep=":") {
+unmerge_headers <- function(sheet, xr, horizontal=TRUE, sep=":") {
   ## TODO: check that a range fits within a sheet.  Should also be in
   ## cellranger?
   ##

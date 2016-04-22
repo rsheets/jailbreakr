@@ -1,15 +1,3 @@
-## This is surprisingly hard to do in the general case because we
-## need to find all islands that satisfy the general property; they
-## might not be aligned so we can't use the general approach of
-## looking for blank rows or columns (no matter how much that
-## *seems* like it would be enough) because if the sub-tables do not
-## align then this will miss sub tables.
-
-## Define a subtable as a possibly ragged block of cells surrounded by
-## an edge of the table, or by a set of blank cells.  I believe that
-## the "flood fill" algorithm here is a reasonable choice and using a
-## 4-direction queue will be fairly efficient.
-
 ##' Classify a table into sub-regions.  We're looking for a (possibly
 ##' ragged) block of cells surrounded by a set of blank cells or the
 ##' edge of the sheet.  This does not detect regions that are multiple
@@ -19,10 +7,10 @@
 ##' This function works by applying the "flood fill" algorithm to
 ##' non-blank cells in the worksheet and then squaring off the result.
 ##'
-##' The \code{classify_sheet} function does the actual classification,
-##' and \code{split_sheet} applies \code{worksheet_view} to these to
-##' produce something that can be used (approximately) as if it was a
-##' separate sheet.
+##' The \code{split_sheet_find} function does the actual
+##' classification, and \code{split_sheet_apply} applies
+##' \code{worksheet_view} to these to produce something that can be
+##' used (approximately) as if it was a separate sheet.
 ##' @title Classify and split sheet
 ##' @param sheet A linen \code{worksheet} object, possibly from an
 ##'   Excel or googlesheets spreadsheet.
@@ -31,29 +19,41 @@
 ##'   same dimensions as the worksheet indicating what group each cell
 ##'   is in, or \code{"both"}: a list with elements \code{"limits"}
 ##'   and \code{"groups"}.
+##' @return For \code{split_sheet} and \code{split_sheet_apply}, a
+##'   list of worksheet views; each view corresponds to one region of
+##'   the sheet and the order within the list is currently arbitrary
+##'   (but may be ordered predictably in a future version).  For
+##'   \code{split_sheet_find}, a list of
+##'   \code{cellranger::cell_limits} objects, each corresponding to a
+##'   region of the sheet that represents a separate rectangular
+##'   region (again, order is arbitrary for now)
 ##' @export
 split_sheet <- function(sheet) {
-  if (!inherits(sheet, "worksheet")) {
-    stop("sheet must be a 'worksheet' object")
-  }
-  limits <- classify_sheet(sheet, "limits")
-  lapply(limits, linen::worksheet_view, sheet=sheet)
+  split_sheet_apply(sheet, split_sheet_find(sheet))
 }
 
 ##' @export
 ##' @rdname split_sheet
-classify_sheet <- function(sheet, as="limits") {
+split_sheet_find <- function(sheet) {
   if (!inherits(sheet, "worksheet")) {
     stop("sheet must be a 'worksheet' object")
   }
-  as <- match.arg(as, c("limits", "groups", "both"))
-
   i <- abs(sheet$lookup2)
   i <- !is.na(i) & !sheet$cells$is_blank[c(i)]
-  classify(i, as)
+  classify(i, "limits")
 }
 
+##' @export
+##' @rdname split_sheet
+##' @param limits A list of \code{cellranger::cell_limits} object, as
+##'   returned by \code{split_sheet_find}.
+split_sheet_apply <- function(sheet, limits) {
+  lapply(limits, linen::worksheet_view, sheet=sheet)
+}
+
+## This might be a bit more general so I've kept it aside for now.
 classify <- function(i, as) {
+  as <- match.arg(as, c("limits", "groups", "both"))
   ## TODO: Refactor to allow multiple regions not just TRUE/FALSE
   ##
   ## TODO: add squaring off as an option...

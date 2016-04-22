@@ -2,15 +2,48 @@
 % Please edit documentation in R/split_metadata.R
 \name{split_metadata}
 \alias{split_metadata}
+\alias{split_metadata_apply}
+\alias{split_metadata_find}
 \title{Split metadata from a worksheet}
 \usage{
 split_metadata(x, include_merged = TRUE, min_jump = 2, min_data_block = 5)
+
+split_metadata_find(x, include_merged = TRUE, min_jump = 2,
+  min_data_block = 5)
+
+split_metadata_apply(x, n)
 }
 \arguments{
-\item{sheet}{A worksheet or a worksheet view}
+\item{x}{A worksheet or a worksheet view}
+
+\item{include_merged}{Include merged cells when computing row
+width.  This is generally going to be what you want to do, but
+if you have a sheet with metadata rows that are entirely merged
+across, you probably will do better by turning this option off
+(in that case they'd be counted as a single column wide).}
+
+\item{min_jump}{The minimum number of columns increase that we'll
+count as moving from the metadata block to the data block.  A
+single column (1) is probably going to be prone to false
+positives, and in sheets with this pattern the jump is often
+quite large.}
+
+\item{min_data_block}{The minimum number of rows without
+decreasing in size before we can conclude that we're in the data
+block.  If we run off the end of the worksheet before reaching
+this number, we'll conclude no metadata was found.}
+
+\item{n}{A scalar integer representing the number of rows to
+consider to be metadata (i.e., equivalent to the return value of
+\code{split_metadata_find}.}
 }
 \value{
-A worksheet view
+For \code{split_metadata} and \code{split_metadata_apply},
+  a worksheet view; in this view the \code{data$metadata} element
+  will be a worksheet view of the metadata.  For
+  \code{split_metadata_find}, a single integer representing the
+  number of rows of metadata found (with zero indicating no
+  metadata).
 }
 \description{
 Split metadata from a worksheet or region of a worksheet (a
@@ -47,8 +80,5 @@ Other things that might be useful, but which aren't supported yet,
 include looking for different colours and fonts in the metadata
 and the main block; when we switch from one to the other we're
 likely to see things like a change here.
-}
-\author{
-Rich FitzJohn
 }
 

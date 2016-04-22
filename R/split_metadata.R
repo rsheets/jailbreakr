@@ -33,11 +33,38 @@
 ##' likely to see things like a change here.
 ##'
 ##' @title Split metadata from a worksheet
-##' @param sheet A worksheet or a worksheet view
-##' @return A worksheet view
-##' @author Rich FitzJohn
+##' @param x A worksheet or a worksheet view
+##' @param include_merged Include merged cells when computing row
+##'   width.  This is generally going to be what you want to do, but
+##'   if you have a sheet with metadata rows that are entirely merged
+##'   across, you probably will do better by turning this option off
+##'   (in that case they'd be counted as a single column wide).
+##' @param min_jump The minimum number of columns increase that we'll
+##'   count as moving from the metadata block to the data block.  A
+##'   single column (1) is probably going to be prone to false
+##'   positives, and in sheets with this pattern the jump is often
+##'   quite large.
+##' @param min_data_block The minimum number of rows without
+##'   decreasing in size before we can conclude that we're in the data
+##'   block.  If we run off the end of the worksheet before reaching
+##'   this number, we'll conclude no metadata was found.
+##' @return For \code{split_metadata} and \code{split_metadata_apply},
+##'   a worksheet view; in this view the \code{data$metadata} element
+##'   will be a worksheet view of the metadata.  For
+##'   \code{split_metadata_find}, a single integer representing the
+##'   number of rows of metadata found (with zero indicating no
+##'   metadata).
+##' @export
 split_metadata <- function(x, include_merged=TRUE, min_jump=2,
                            min_data_block=5) {
+  n <- split_metadata_find(x, include_merged, min_jump, min_data_block)
+  split_metadata_apply(x, n)
+}
+
+##' @export
+##' @rdname split_metadata
+split_metadata_find <- function(x, include_merged=TRUE, min_jump=2,
+                                min_data_block=5) {
   ## This is general thing here, I think.
   if (inherits(x, "worksheet_view")) {
     lookup <- x$sheet$lookup2[x$idx$r, x$idx$c]
@@ -52,8 +79,15 @@ split_metadata <- function(x, include_merged=TRUE, min_jump=2,
     lookup[lookup < 0] <- NA
   }
 
-  ans <- detect_metadata(!is.na(lookup), min_jump, min_data_block)
+  split_metadata_classify(!is.na(lookup), min_jump, min_data_block)
+}
 
+##' @export
+##' @rdname split_metadata
+##' @param n A scalar integer representing the number of rows to
+##'   consider to be metadata (i.e., equivalent to the return value of
+##'   \code{split_metadata_find}.
+split_metadata_apply <- function(x, n) {
   if (inherits(x, "worksheet_view")) {
     xr <- x$xr
     data <- xr$data
@@ -62,29 +96,28 @@ split_metadata <- function(x, include_merged=TRUE, min_jump=2,
     data <- list()
   }
   xr_meta <- xr
-  xr$ul[[1]] <- xr$ul[[1]] + ans
+  xr$ul[[1]] <- xr$ul[[1]] + n
 
-  xr_meta$lr[[1]] <- xr_meta$ul[[1]] + ans - 1L
+  xr_meta$lr[[1]] <- xr_meta$ul[[1]] + n - 1L
   data$metadata <- linen::worksheet_view(sheet, xr_meta)
 
   linen::worksheet_view(sheet, xr, data)
 }
 
-detect_metadata <- function(m, min_jump=2, min_data_block=5) {
+## Now, we look for the first increase of size min_jump where there is
+## not a further jump (of any size) for min_data_block.  This is not
+## going to deal terribly well with missing data in the far right
+## column which will cause the number to move in and out.
+split_metadata_classify <- function(m, min_jump, min_data_block) {
   i <- apply(m, 1, function(x) max(which(x)))
-
-  ## Now, we look for the first increase of size min_jump where there
-  ## is not a further jump (of any size) for min_data_block.  This is
-  ## not going to deal terribly well with missing data in the far
-  ## right column which will cause the number to move in and out.
-
-  ## These are all the increases; these are the only things to deal with?
   di <- diff(i)
   j <- which(di > 0L)
   for (k in j) {
     if (di[[k]] >= min_jump) {
-      if (max(i[(k + 1L):min(k + 1L + min_data_block, length(i))]) -
-          i[[k + 1L]] == 0) {
+      n <- k + min_data_block
+      if (n > length(i)) {
+        break
+      } else if (all(i[(k + 1L):n] <= i[[k + 1L]])) { # no growth
         return(k)
       }
     }
