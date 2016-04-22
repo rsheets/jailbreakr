@@ -32,6 +32,16 @@
 ##'   is in, or \code{"both"}: a list with elements \code{"limits"}
 ##'   and \code{"groups"}.
 ##' @export
+split_sheet <- function(sheet) {
+  if (!inherits(sheet, "worksheet")) {
+    stop("sheet must be a 'worksheet' object")
+  }
+  limits <- classify_sheet(sheet, "limits")
+  lapply(limits, linen::worksheet_view, sheet=sheet)
+}
+
+##' @export
+##' @rdname split_sheet
 classify_sheet <- function(sheet, as="limits") {
   if (!inherits(sheet, "worksheet")) {
     stop("sheet must be a 'worksheet' object")
@@ -41,16 +51,6 @@ classify_sheet <- function(sheet, as="limits") {
   i <- abs(sheet$lookup2)
   i <- !is.na(i) & !sheet$cells$is_blank[c(i)]
   classify(i, as)
-}
-
-##' @export
-##' @rdname classify_sheet
-split_sheet <- function(sheet) {
-  if (!inherits(sheet, "worksheet")) {
-    stop("sheet must be a 'worksheet' object")
-  }
-  limits <- classify_sheet(sheet, "limits")
-  lapply(limits, worksheet_view, sheet=sheet)
 }
 
 classify <- function(i, as) {
