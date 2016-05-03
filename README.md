@@ -1,8 +1,5 @@
 # jailbreakr
 
-[![Linux Build Status](https://travis-ci.org/jennybc/jailbreakr.svg?branch=master)](https://travis-ci.org/jennybc/jailbreakr)
-[![Windows Build status](https://ci.appveyor.com/api/projects/status/github/jennybc/jailbreakr?svg=true)](https://ci.appveyor.com/project/jennybc/jailbreakr)
-
 **Warning: This project is in the early scoping stages; do not use for anything other than amusement/frustration purposes**
 
 Data Liberator.  To extract tabular data people put in nontabular structures in a program designed to hold tables.
@@ -14,7 +11,7 @@ Data Liberator.  To extract tabular data people put in nontabular structures in 
 Requires the development version of xml2 (for `xml_find_lgl`)
 
 ```r
-devtools::install_github("jennybc/jailbreakr")
+devtools::install_github("rsheets/jailbreakr")
 ```
 
 ## Goals

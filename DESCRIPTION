@@ -12,8 +12,8 @@ Description: Liberate data from really terrible excel spreadsheets.
     in.
 License: GPL-3
 LazyData: true
-URL: https://github.com/jennybc/jailbreakr
-BugReports: https://github.com/jennybc/jailbreakr/issues
+URL: https://github.com/rsheets/jailbreakr
+BugReports: https://github.com/rsheets/jailbreakr/issues
 Imports:
     cellranger,
     linen
