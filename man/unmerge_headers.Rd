@@ -10,7 +10,9 @@ unmerge_headers(sheet, xr, horizontal = TRUE, sep = ":")
 \item{sheet}{A \code{\link{worksheet}} object}
 
 \item{xr}{A cell range (a \code{cellranger::cell_limits} object)
-indicating the region to collapse.}
+indicating the region to collapse.  This is going to be relative
+to the view for now, until I work out how to use the new
+relative references.}
 
 \item{horizontal}{Flag indicating if this a horizontal region
 representing headers (\code{TRUE}, the default) or a vertical

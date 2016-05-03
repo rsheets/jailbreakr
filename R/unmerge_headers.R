@@ -61,6 +61,10 @@
 ##' @return A character vector
 ##' @export
 unmerge_headers <- function(sheet, xr, horizontal=TRUE, sep=":") {
+  if (is.numeric(xr) && length(xr) == 1L) {
+    ## TODO: sanity checking here.
+    xr <- cellranger::cell_limits(c(1, 1), c(xr, sheet$dim[[2L]]))
+  }
   ## TODO: check that a range fits within a sheet.  Should also be in
   ## cellranger?
   ##
