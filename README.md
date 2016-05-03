@@ -8,10 +8,14 @@ Data Liberator.  To extract tabular data people put in nontabular structures in 
 
 ## Installation
 
-Requires the development version of xml2 (for `xml_find_lgl`)
+Requires the development version of xml2 (for `xml_find_lgl`) as well as [cellrangr](https://github.com/rsheets/cellranger) and [linen](https://github.com/rsheets/linen).  Chances are you'll want [rexcel](https://github.com/rsheets/rexcel) too.
 
 ```r
-devtools::install_github("rsheets/jailbreakr")
+devtools::install_github(c("hadley/xml2",
+                           "rsheets/linen",
+                           "rsheets/cellranger",
+                           "rsheets/rexcel",
+                           "rsheets/jailbreakr"))
 ```
 
 ## Goals
