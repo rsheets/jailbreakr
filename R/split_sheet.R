@@ -40,6 +40,7 @@ split_sheet_find <- function(sheet) {
   }
   i <- abs(sheet$lookup2)
   i <- !is.na(i) & !sheet$cells$is_blank[c(i)]
+  ## TODO: Allow for 1 row regions?  Use borders to help?
   classify(i, "limits")
 }
 

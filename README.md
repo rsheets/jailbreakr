@@ -46,3 +46,7 @@ The second, larger, one is the [Enron corpus](http://www.felienne.com/archives/3
 
 * jailbreakr
   - uses output in linen format that is provided by googlesheets or excelr
+
+# Ideas
+
+Can we feed things through openrefine or something?

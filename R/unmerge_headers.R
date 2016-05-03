@@ -44,7 +44,9 @@
 ##' @title Unmerge headers and row labels
 ##' @param sheet A \code{\link{worksheet}} object
 ##' @param xr A cell range (a \code{cellranger::cell_limits} object)
-##'   indicating the region to collapse.
+##'   indicating the region to collapse.  This is going to be relative
+##'   to the view for now, until I work out how to use the new
+##'   relative references.
 ##' @param horizontal Flag indicating if this a horizontal region
 ##'   representing headers (\code{TRUE}, the default) or a vertical
 ##'   region.  If horizontal we collapse away vertical spaces to
@@ -72,14 +74,20 @@ unmerge_headers <- function(sheet, xr, horizontal=TRUE, sep=":") {
                      function(x) as.character(x %||% NA)),
              dim(i))
 
-  ul <- xr$ul
-  lr <- xr$lr
+  ## This needs tweaking in the case of a view.
+  if (inherits(sheet, "worksheet_view")) {
+    ul <- xr$ul + sheet$xr$ul - 1L
+    lr <- xr$lr + sheet$xr$ul - 1L
+  } else {
+    ul <- xr$ul
+    lr <- xr$lr
+  }
 
   for (el in sheet$merged) {
     ## TODO: This probably moves into linen:::loc_merge, but needs two things:
     ## 1. offset / anchor
     ## 2. horiz / vert only mode
-    if (all(el$ul <= lr) && all(el$lr >= ul)) {
+    if (all(el$ul >= ul) && all(el$lr <= lr)) {
       if (horizontal) {
         if (el$lr[[2L]] > el$ul[[2L]]) {
           len <- el$lr[[2L]] - el$ul[[2L]] + 1L
