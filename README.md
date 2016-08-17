@@ -20,11 +20,11 @@ devtools::install_github(c("hadley/xml2",
 
 ## Goals
 
-There are two large excel spreadsheet corpuses; it would be nice to use these to get a feel for what fraction of spreadsheets we can handle or the range of non-table-like data out there.
+There are two large excel spreadsheet corpora; it would be nice to use these to get a feel for what fraction of spreadsheets we can handle or the range of non-table-like data out there.
 
 ![the things people do to data](http://replygif.net/i/514.gif)
 
-The first is the [EUSES corpus](http://openscience.us/repo/spreadsheet/euses.html) of 4,447 spreadsheets (16,853 worksheets).  This is all xls files (rather than xlsx) and therefore neaed either an [xls -> xlsx conversion](http://bit.ly/1P2rMGr) or support in jailbreakr for xls files.
+The first is the [EUSES corpus](http://openscience.us/repo/spreadsheet/euses.html) of 4,447 spreadsheets (16,853 worksheets).  This is all xls files (rather than xlsx) and therefore need either an [xls -> xlsx conversion](http://bit.ly/1P2rMGr) or support in jailbreakr for xls files.
 
 The second, larger, one is the [Enron corpus](http://www.felienne.com/archives/3634) of 15,770 spreadsheets (79,983)
 
@@ -44,11 +44,11 @@ The second, larger, one is the [Enron corpus](http://www.felienne.com/archives/3
 
 * low level packages:
   - googlesheets
-  - excelr
+  - rexcel
   - these depend on linen, and will have to provide things like ids and filenames to satisfy all the features that linen will do.
 
 * jailbreakr
-  - uses output in linen format that is provided by googlesheets or excelr
+  - uses output in linen format that is provided by googlesheets or rexcel
 
 # Ideas
 
